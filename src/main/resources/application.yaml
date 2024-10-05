@@ -1,0 +1,25 @@
+spring.config.import: optional:file:.env[.properties]
+
+server:
+  port: 8081
+  ssl:
+    key-store-type: PKCS12
+    key-store: classpath:keystore/apisecurity.p12
+    key-store-password: password
+    key-alias: apisecurity
+    enabled: true
+  servlet:
+     session:
+       cookie:
+         max-age: 15m
+
+# logging.level.org.example.service.WordBuilder: DEBUG
+
+todoist:
+  auth-url: https://todoist.com/oauth/authorize
+  api-url: https://api.todoist.com/rest/v2
+  scope: data:read
+  client-id: ${CLIENT_ID}
+  projects: Interview
+  word-name: todoist.doc
+  output-path: output/

@@ -1,0 +1,3 @@
+rootProject.name = 'google-to-notionAI'
+include 'document'
+
