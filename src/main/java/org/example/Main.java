@@ -1,21 +1,34 @@
 package org.example;
 
-import org.springframework.boot.SpringApplication;
-import org.springframework.boot.autoconfigure.SpringBootApplication;
-import org.springframework.boot.web.client.RestTemplateBuilder;
-import org.springframework.context.annotation.Bean;
-import org.springframework.web.client.RestTemplate;
+import org.example.config.TodoistConfig;
+import org.example.tool.TodoistExporter;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-@SpringBootApplication
+import java.io.InputStream;
+import java.util.Properties;
+
+
 public class Main {
+    private static final Logger log = LoggerFactory.getLogger(Main.class);
 
     public static void main(String[] args) {
-        SpringApplication.run(Main.class, args);
+        Properties prop = new Properties();
+        loadProperties(prop);
+        log.info("Properties = {}", prop);
+
+        TodoistConfig config = new TodoistConfig(prop);
+
+        TodoistExporter service = new TodoistExporter(config);
+        service.start();
     }
 
-    @Bean
-    public RestTemplate buildRestTemple(RestTemplateBuilder builder) {
-        return builder.build();
+    private static void loadProperties(Properties prop) {
+        try {
+            InputStream stream = ClassLoader.getSystemClassLoader().getResourceAsStream("application.properties");
+            prop.load(stream);
+        } catch (Exception ex) {
+            log.error("Error loading properties", ex);
+        }
     }
-
 }

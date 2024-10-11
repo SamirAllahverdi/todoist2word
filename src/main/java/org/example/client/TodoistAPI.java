@@ -1,92 +1,123 @@
 package org.example.client;
 
+import org.example.config.JsonBodyHandler;
 import org.example.config.TodoistConfig;
-import org.example.model.CommentResponse;
-import org.example.model.ProjectResponse;
-import org.example.model.SectionResponse;
-import org.example.model.TaskResponse;
-import org.springframework.core.ParameterizedTypeReference;
-import org.springframework.http.*;
-import org.springframework.stereotype.Component;
-import org.springframework.web.client.RestTemplate;
+import org.example.model.Comment;
+import org.example.model.Project;
+import org.example.model.Section;
+import org.example.model.Task;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.util.Arrays;
 import java.util.List;
 
-@Component
 public class TodoistAPI {
+    private static final Logger log = LoggerFactory.getLogger(TodoistAPI.class);
 
-    private final RestTemplate restTemplate;
     private final TodoistConfig config;
+    private final HttpClient client;
 
-    public TodoistAPI(RestTemplate restTemplate, TodoistConfig config) {
-        this.restTemplate = restTemplate;
+    public TodoistAPI(TodoistConfig config) {
         this.config = config;
+        this.client = HttpClient.newBuilder().followRedirects(HttpClient.Redirect.NORMAL).build();
     }
 
-    public List<ProjectResponse> getProjects(String code) {
+    public List<Project> getProjects() {
+        var request = HttpRequest.newBuilder(
+                        URI.create(config.getApiUrl() + "/projects"))
+                .header("Authorization", "Bearer " + config.getApiToken())
+                .build();
 
-        ResponseEntity<List<ProjectResponse>> exchange = restTemplate.exchange(
-                config.getApiUrl() + "/projects", HttpMethod.GET, buildBasicHttpEntity(code), new ParameterizedTypeReference<>() {
-                });
-        if (exchange.getStatusCode() != HttpStatus.OK)
-            throw new RuntimeException("Failed to fetch projects");
-
-        return exchange.getBody();
+        try {
+            HttpResponse<Project[]> response = client.send(request, new JsonBodyHandler<>(Project[].class));
+            if (response.statusCode() != 200) {
+                throw new RuntimeException("Failed to fetch projects statusCode = " + response.statusCode());
+            }
+            return Arrays.asList(response.body());
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to fetch projects", e);
+        }
     }
 
-    public List<SectionResponse> getSections(String code, String projectId) {
-        ResponseEntity<List<SectionResponse>> exchange = restTemplate.exchange(
-                config.getApiUrl() + "/sections?project_id=" + projectId, HttpMethod.GET, buildBasicHttpEntity(code), new ParameterizedTypeReference<>() {
-                });
-        if (exchange.getStatusCode() != HttpStatus.OK)
-            throw new RuntimeException("Failed to fetch sections");
+    public List<Section> getSections(String projectId) {
+        var request = HttpRequest.newBuilder(
+                        URI.create(config.getApiUrl() + "/sections?project_id=" + projectId))
+                .header("Authorization", "Bearer " + config.getApiToken())
+                .build();
 
-        return exchange.getBody();
+        try {
+            HttpResponse<Section[]> response = client.send(request, new JsonBodyHandler<>(Section[].class));
+            if (response.statusCode() != 200) {
+                throw new RuntimeException("Failed to fetch sections statusCode = " + response.statusCode());
+            }
+            return Arrays.asList(response.body());
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to fetch sections", e);
+        }
     }
 
-    public List<TaskResponse> getTasks(String code, String sectionId) {
-        ResponseEntity<List<TaskResponse>> exchange = restTemplate.exchange(
-                config.getApiUrl() + "/tasks?section_id=" + sectionId, HttpMethod.GET,
-                buildBasicHttpEntity(code), new ParameterizedTypeReference<>() {});
 
-        if (exchange.getStatusCode() != HttpStatus.OK)
-            throw new RuntimeException("Failed to fetch tasks");
+    public List<Task> getTasks(String sectionId) {
+        var request = HttpRequest.newBuilder(
+                        URI.create(config.getApiUrl() + "/tasks?section_id=" + sectionId))
+                .header("Authorization", "Bearer " + config.getApiToken())
+                .build();
 
-        return exchange.getBody();
+        try {
+            HttpResponse<Task[]> response = client.send(request, new JsonBodyHandler<>(Task[].class));
+            if (response.statusCode() != 200) {
+                throw new RuntimeException("Failed to fetch tasks statusCode = " + response.statusCode());
+            }
+            return Arrays.asList(response.body());
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to fetch tasks", e);
+        }
     }
 
-    public List<CommentResponse> getComments(String code, String taskId) {
+    public List<Comment> getComments(String taskId) {
+        var request = HttpRequest.newBuilder(
+                        URI.create(config.getApiUrl() + "/comments?task_id=" + taskId))
+                .header("Authorization", "Bearer " + config.getApiToken())
+                .build();
 
-        ResponseEntity<List<CommentResponse>> exchange = restTemplate.exchange(
-                config.getApiUrl() + "/comments?task_id=" + taskId, HttpMethod.GET, buildBasicHttpEntity(code), new ParameterizedTypeReference<>() {
-                });
-        if (exchange.getStatusCode() != HttpStatus.OK)
-            throw new RuntimeException("Failed to fetch comments");
-
-        return exchange.getBody();
+        try {
+            HttpResponse<Comment[]> response = client.send(request, new JsonBodyHandler<>(Comment[].class));
+            if (response.statusCode() != 200) {
+                throw new RuntimeException("Failed to fetch comments statusCode = " + response.statusCode());
+            }
+            return Arrays.asList(response.body());
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to fetch comments", e);
+        }
     }
 
-    private static HttpEntity<Object> buildBasicHttpEntity(String code) {
-        HttpHeaders headers = new HttpHeaders();
-        headers.add(HttpHeaders.AUTHORIZATION, "Bearer " + code);
+    public InputStream getAttachment(String fileUrl, String fileType) {
 
-        return new HttpEntity<>(headers);
+        var request = HttpRequest.newBuilder(URI.create(fileUrl))
+                .header("Authorization", "Bearer " + config.getApiToken())
+                .header("Content-Type", fileType)
+                .GET()
+                .build();
+
+        try {
+            HttpResponse<byte[]> response = client.send(request, HttpResponse.BodyHandlers.ofByteArray());
+            if (response.statusCode() != 200) {
+                throw new RuntimeException("Failed to fetch attachment statusCode = " + response.statusCode());
+            }
+            return new ByteArrayInputStream(response.body());
+        } catch (Exception e) {
+            e.printStackTrace();
+            log.error("Failed to fetch attachment url = {} ", fileUrl, e);
+        }
+
+        return null;
     }
 
-    public InputStream getAttachment(String code, String fileUrl, String fileType) {
-
-        HttpHeaders headers = new HttpHeaders();
-        headers.add(HttpHeaders.AUTHORIZATION, "Bearer " + code);
-        headers.add(HttpHeaders.CONTENT_TYPE, fileType);
-
-        ResponseEntity<byte[]> exchange = restTemplate.exchange(fileUrl, HttpMethod.GET, new HttpEntity<>(headers), byte[].class);
-
-        if (exchange.getStatusCode() != HttpStatus.OK)
-            throw new RuntimeException("Failed to fetch attachment");
-
-
-        return new ByteArrayInputStream(exchange.getBody());
-    }
 }

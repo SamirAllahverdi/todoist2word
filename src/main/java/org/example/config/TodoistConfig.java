@@ -1,27 +1,33 @@
 package org.example.config;
 
-import org.springframework.boot.context.properties.ConfigurationProperties;
-import org.springframework.context.annotation.Configuration;
+import org.apache.poi.util.StringUtil;
 
 import java.nio.file.Path;
+import java.util.Arrays;
 import java.util.List;
+import java.util.Properties;
 
-@Configuration
-@ConfigurationProperties(prefix = "todoist")
 public class TodoistConfig {
-    private String authUrl;
-    private String apiUrl;
-    private String scope;
-    private String clientId;
-    private List<String> projects;
-    private String wordName;
-    private String outputPath;
+    private final String apiUrl;
+    private final List<String> projects;
+    private final String wordName;
+    private final String outputPath;
+    private final String apiToken;
 
+    public TodoistConfig(Properties props) {
+        this.apiUrl = props.getProperty("todoist.api.url");
+        this.apiToken = props.getProperty("todoist.api.token");
+        if (StringUtil.isBlank(apiToken))
+            throw new IllegalArgumentException("Token not defined [todoist.api.token]");
+        this.projects = Arrays.asList(props.getProperty("todoist.projects").split(","));
+        this.wordName = props.getProperty("todoist.word-name");
+        this.outputPath = props.getProperty("todoist.output-path");
+    }
 
     public boolean contains(String name) {
-        if (projects == null || projects.isEmpty())
+        if (projects == null || projects.isEmpty()) {
             return true;
-
+        }
         return projects.contains(name);
     }
 
@@ -29,64 +35,23 @@ public class TodoistConfig {
         return Path.of(outputPath, wordName).toString();
     }
 
-    public void setWordName(String wordName) {
-        this.wordName = wordName;
+    public String getApiUrl() {
+        return apiUrl;
     }
 
     public List<String> getProjects() {
         return projects;
     }
 
-    public void setProjects(List<String> projects) {
-        this.projects = projects;
+    public String getWordName() {
+        return wordName;
     }
 
     public String getOutputPath() {
         return outputPath;
     }
 
-    public void setOutputPath(String outputPath) {
-        this.outputPath = outputPath;
-    }
-
-    public String getAuthUrl() {
-        return authUrl;
-    }
-
-    public void setAuthUrl(String authUrl) {
-        this.authUrl = authUrl;
-    }
-
-    public String getApiUrl() {
-        return apiUrl;
-    }
-
-    public void setApiUrl(String apiUrl) {
-        this.apiUrl = apiUrl;
-    }
-
-    public String getScope() {
-        return scope;
-    }
-
-    public void setScope(String scope) {
-        this.scope = scope;
-    }
-
-    public String getClientId() {
-        return clientId;
-    }
-
-    public void setClientId(String clientId) {
-        this.clientId = clientId;
-    }
-
-    @Override
-    public String toString() {
-        return "TodoistConfig{" +
-                "authUrl='" + authUrl + '\'' +
-                ", apiUrl='" + apiUrl + '\'' +
-                ", scope='" + scope + '\'' +
-                '}';
+    public String getApiToken() {
+        return apiToken;
     }
 }

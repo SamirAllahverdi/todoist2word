@@ -1,3 +1,0 @@
-1) export content with one endpoint
-  - auhenticate and start exporting
-2) is custom https config really needed?

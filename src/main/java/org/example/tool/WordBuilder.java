@@ -1,4 +1,4 @@
-package org.example.service;
+package org.example.tool;
 
 import org.apache.poi.util.Units;
 import org.apache.poi.xwpf.usermodel.ParagraphAlignment;
@@ -7,14 +7,14 @@ import org.apache.poi.xwpf.usermodel.XWPFParagraph;
 import org.apache.poi.xwpf.usermodel.XWPFRun;
 import org.example.client.TodoistAPI;
 import org.example.model.Attachment;
-import org.example.model.CommentResponse;
-import org.example.model.SectionResponse;
-import org.example.model.TaskResponse;
+import org.example.model.Comment;
+import org.example.model.Section;
+import org.example.model.Task;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.http.MediaType;
 
 import java.io.FileOutputStream;
+import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Path;
 import java.util.List;
@@ -27,29 +27,27 @@ public class WordBuilder {
     private final XWPFDocument document;
     private final String wordName;
     private final String outputPath;
-    private final String code;
     private final TodoistAPI api;
 
-    public WordBuilder(String wordName, String outputPath, String code, String projectName, TodoistAPI api) {
+    public WordBuilder(String wordName, String outputPath, String projectName, TodoistAPI api) {
         this.document = new XWPFDocument();
         this.wordName = wordName;
         this.outputPath = outputPath;
         this.api = api;
-        this.code = code;
         createParagraph(projectName, ParagraphAlignment.CENTER, 20, false);
     }
 
-    public void export(SectionResponse section) {
+    public void export(Section section) {
         createParagraph(String.format(" - %s - ", section.getName()), ParagraphAlignment.CENTER, 18, true);
     }
 
-    public void export(TaskResponse task, List<CommentResponse> comments) {
+    public void export(Task task, List<Comment> comments) {
 
-        log.debug("Exporting task = {}", task.getContent());
+        log.info("Exporting task = {}", task.getContent());
         createParagraph(String.format("%s - %s", task.getContent(), task.getDescription()), ParagraphAlignment.CENTER, 14, true);
 
         comments.forEach(c -> {
-            log.debug("Exporting comment = {}", c.getContent());
+            log.info("Exporting comment = {}", c.getContent());
             if (c.getAttachment() == null) {
                 createParagraph(String.format("%s %s ", BULLET, c.getContent()), ParagraphAlignment.LEFT, 14, false);
             } else {
@@ -66,10 +64,13 @@ public class WordBuilder {
         image.setAlignment(ParagraphAlignment.LEFT);
         XWPFRun imageRun = image.createRun();
         try {
-            log.debug("Fetching file - fileUrl = {}", attachment.getFileUrl());
-            InputStream imageStream = api.getAttachment(code, attachment.getFileUrl(), attachment.getFileType());
-            log.debug("Exporting file - attachment = {} ", attachment);
-            if (attachment.getFileType().equals(MediaType.APPLICATION_PDF_VALUE)) {
+            log.info("Fetching file - fileUrl = {}", attachment.getFileUrl());
+            InputStream imageStream = api.getAttachment(attachment.getFileUrl(), attachment.getFileType());
+            log.info("Exporting file - attachment = {} ", attachment);
+            if (imageStream == null)
+                return;
+
+            if (attachment.getFileType().equals("application/pdf")) {
                 saveFile(attachment, imageStream);
             } else {
                 imageRun.addPicture(imageStream,
@@ -90,9 +91,9 @@ public class WordBuilder {
     }
 
     private int getPictureType(String fileType) {
-        if (fileType.equals(MediaType.IMAGE_PNG_VALUE)) {
+        if (fileType.equals("image/png")) {
             return XWPFDocument.PICTURE_TYPE_PNG;
-        } else if (fileType.equals(MediaType.IMAGE_JPEG_VALUE)) {
+        } else if (fileType.equals("image/jpeg")) {
             return XWPFDocument.PICTURE_TYPE_JPEG;
         }
 
@@ -113,10 +114,15 @@ public class WordBuilder {
     public void build() {
         try (FileOutputStream out = new FileOutputStream(wordName)) {
             document.write(out);
-            document.close();
             log.info("Export finished! word = {}", wordName);
         } catch (Exception ex) {
             log.error("Export failed! word = {}", wordName, ex);
+        } finally {
+            try {
+                document.close();
+            } catch (IOException e) {
+                log.error("Exception in document close name = {}", wordName, e);
+            }
         }
     }
 
