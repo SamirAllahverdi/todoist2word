@@ -8,6 +8,7 @@ import java.util.List;
 import java.util.Properties;
 
 public class TodoistConfig {
+    private static final String API_TOKEN_PH = "${API_TOKEN}";
     private final String apiUrl;
     private final List<String> projects;
     private final String wordName;
@@ -17,8 +18,8 @@ public class TodoistConfig {
     public TodoistConfig(Properties props) {
         this.apiUrl = props.getProperty("todoist.api.url");
         this.apiToken = props.getProperty("todoist.api.token");
-        if (StringUtil.isBlank(apiToken))
-            throw new IllegalArgumentException("Token not defined [todoist.api.token]");
+        if (StringUtil.isBlank(apiToken) || apiToken.equals(API_TOKEN_PH))
+            throw new IllegalArgumentException("Invalid Token todoist.api.token = " + apiToken);
         this.projects = Arrays.asList(props.getProperty("todoist.projects").split(","));
         this.wordName = props.getProperty("todoist.word-name");
         this.outputPath = props.getProperty("todoist.output-path");

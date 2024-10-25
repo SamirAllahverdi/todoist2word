@@ -5,6 +5,7 @@ import org.example.tool.TodoistExporter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.File;
 import java.io.InputStream;
 import java.util.Properties;
 
@@ -18,9 +19,18 @@ public class Main {
         log.info("Properties = {}", prop);
 
         TodoistConfig config = new TodoistConfig(prop);
-
+        createOutputPath(config);
         TodoistExporter service = new TodoistExporter(config);
         service.start();
+    }
+
+    private static void createOutputPath(TodoistConfig config) {
+        File file = new File(config.getOutputPath());
+        if (!file.exists()) {
+            boolean mkdir = file.mkdir();
+            if (!mkdir)
+                throw new RuntimeException("Cannot create output path to export, path = " + config.getOutputPath());
+        }
     }
 
     private static void loadProperties(Properties prop) {
